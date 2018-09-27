@@ -1,6 +1,6 @@
 <!--
-	Dumbster - a dummy SMTP server
-	Copyright 2016 Joachim Nicolay
+	Mailcatcher - a dummy SMTP server
+	Copyright 2018 Nicolas Bourdeau
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.github.kirviq</groupId>
-	<artifactId>dumbster</artifactId>
-	<version>1.8-SNAPSHOT</version>
+	<groupId>com.github.nbourdeau</groupId>
+	<artifactId>mailcatcher</artifactId>
+	<version>1.0</version>
 
-	<name>dumbster</name>
-	<description>a simple fake SMTP server for unit testing</description>
-	<url>https://github.com/kirviq/dumbster</url>
+	<name>mailcatcher</name>
+	<description>a simple fake SMTP server for test environments</description>
+	<url>https://github.com/nbourdeau/mailcatcher</url>
 
 	<licenses>
 		<license>
@@ -36,22 +36,25 @@
 		</license>
 	</licenses>
 
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.0.5.RELEASE</version>
+	</parent>
+
 	<developers>
 		<developer>
-			<name>Joachim Nicolay</name>
-			<url>https://github.com/kirviq</url>
-		</developer>
-		<developer>
-			<name>Jason Kitchen</name>
-			<organization>quintanasoft</organization>
-			<organizationUrl>http://quintanasoft.com/dumbster/</organizationUrl>
+			<name>Nicolas Bourdeau</name>
+			<url>https://github.com/nbourdeau</url>
+			<organization>Progression LIVE</organization>
+			<organizationUrl>www.progressionlive.com</organizationUrl>
 		</developer>
 	</developers>
 
 	<scm>
-		<connection>scm:git:git@github.com:kirviq/dumbster.git</connection>
-		<developerConnection>scm:git:git@github.com:kirviq/dumbster.git</developerConnection>
-		<url>git@github.com:kirviq/dumbster.git</url>
+		<connection>scm:git:git@github.com:nbourdeau/mailcatcher.git</connection>
+		<developerConnection>scm:git:git@github.com:nbourdeau/mailcatcher.git</developerConnection>
+		<url>git@github.com:nbourdeau/mailcatcher.git</url>
 	</scm>
 
 	<properties>
@@ -61,6 +64,10 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<!--<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.5.1</version>
@@ -68,8 +75,8 @@
 					<source>1.7</source>
 					<target>1.7</target>
 				</configuration>
-			</plugin>
-			<plugin>
+			</plugin>-->
+			<!--<plugin>
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>3.0.2</version>
 				<configuration>
@@ -77,8 +84,8 @@
 						<manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
 					</archive>
 				</configuration>
-			</plugin>
-			<plugin>
+			</plugin>-->
+			<!--<plugin>
 				<groupId>org.apache.felix</groupId>
 				<artifactId>maven-bundle-plugin</artifactId>
 				<version>3.0.1</version>
@@ -91,8 +98,8 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
+			</plugin>-->
+			<!--<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
 				<version>3.0.0</version>
@@ -104,8 +111,8 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
+			</plugin>-->
+			<!--<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
 				<version>2.10.3</version>
@@ -117,23 +124,50 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
+			</plugin>-->
 		</plugins>
 	</build>
 
 	<dependencies>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>1.3.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.197</version>
+			<scope>runtime</scope>
+		</dependency>
+
+		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>1.7.18</version>
 		</dependency>
-		<!--suppress NonOsgiMavenDependency -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<version>1.16.6</version>
-			<scope>provided</scope>
-		</dependency>
+
+		<!-- TESTS -->
 
 		<dependency>
 			<groupId>javax.mail</groupId>
@@ -159,5 +193,6 @@
 			<version>1.7.18</version>
 			<scope>test</scope>
 		</dependency>
+
 	</dependencies>
 </project>

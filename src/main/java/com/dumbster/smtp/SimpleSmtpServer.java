@@ -17,25 +17,27 @@
  */
 package com.dumbster.smtp;
 
-import lombok.extern.slf4j.Slf4j;
+import com.github.nbourdeau.mailcatcher.MessageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
 /** Dummy SMTP server for testing purposes. */
-@Slf4j
+// TODO: make it a spring bean
 public final class SimpleSmtpServer implements AutoCloseable {
+
+	private static Logger log = LoggerFactory.getLogger(SimpleSmtpServer.class);
 
 	/** Default SMTP port is 25. */
 	public static final int DEFAULT_SMTP_PORT = 25;
@@ -48,9 +50,6 @@ public final class SimpleSmtpServer implements AutoCloseable {
 
 	private static final Pattern CRLF = Pattern.compile("\r\n");
 
-	/** Stores all of the email received since this instance started up. */
-	private final List<SmtpMessage> receivedMail;
-
 	/** The server socket this server listens to. */
 	private final ServerSocket serverSocket;
 
@@ -60,6 +59,8 @@ public final class SimpleSmtpServer implements AutoCloseable {
 	/** Indicates the server thread that it should stop */
 	private volatile boolean stopped = false;
 
+	private MessageService messageService;
+
 	/**
 	 * Creates an instance of a started SimpleSmtpServer.
 	 *
@@ -67,17 +68,17 @@ public final class SimpleSmtpServer implements AutoCloseable {
 	 * @return a reference to the running SMTP server
 	 * @throws IOException when listening on the socket causes one
 	 */
-	public static SimpleSmtpServer start(int port) throws IOException {
-		return new SimpleSmtpServer(new ServerSocket(Math.max(port, 0)));
+	public static SimpleSmtpServer start(int port, MessageService messageService) throws IOException {
+		return new SimpleSmtpServer(new ServerSocket(Math.max(port, 0)), messageService);
 	}
 
 	/**
-	 * private constructor because factory method {@link #start(int)} better indicates that
+	 * private constructor because factory method {@link #start(int, MessageService)} better indicates that
 	 * the created server is already running
 	 * @param serverSocket socket to listen on
 	 */
-	private SimpleSmtpServer(ServerSocket serverSocket) {
-		this.receivedMail = new ArrayList<>();
+	private SimpleSmtpServer(ServerSocket serverSocket, MessageService messageService) {
+		this.messageService = messageService;
 		this.serverSocket = serverSocket;
 		this.workerThread = new Thread(
 				new Runnable() {
@@ -94,24 +95,6 @@ public final class SimpleSmtpServer implements AutoCloseable {
 	 */
 	public int getPort() {
 		return serverSocket.getLocalPort();
-	}
-
-	/**
-	 * @return list of {@link SmtpMessage}s received by since start up or last reset.
-	 */
-	public List<SmtpMessage> getReceivedEmails() {
-		synchronized (receivedMail) {
-			return Collections.unmodifiableList(new ArrayList<>(receivedMail));
-		}
-	}
-
-	/**
-	 * forgets all received emails
-	 */
-	public void reset() {
-		synchronized (receivedMail) {
-			receivedMail.clear();
-		}
 	}
 
 	/**
@@ -157,14 +140,7 @@ public final class SimpleSmtpServer implements AutoCloseable {
 				try (Socket socket = serverSocket.accept();
 				     Scanner input = new Scanner(new InputStreamReader(socket.getInputStream(), StandardCharsets.ISO_8859_1)).useDelimiter(CRLF);
 				     PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.ISO_8859_1));) {
-
-					synchronized (receivedMail) {
-						/*
-						 * We synchronize over the handle method and the list update because the client call completes inside
-						 * the handle method and we have to prevent the client from reading the list until we've updated it.
-						 */
-						receivedMail.addAll(handleTransaction(out, input));
-					}
+					messageService.storeMessages(handleTransaction(out, input));
 				}
 			}
 		} catch (Exception e) {
@@ -188,7 +164,7 @@ public final class SimpleSmtpServer implements AutoCloseable {
 	 * @return List of SmtpMessage
 	 * @throws IOException
 	 */
-	private static List<SmtpMessage> handleTransaction(PrintWriter out, Iterator<String> input) throws IOException {
+	private static List<MimeMessage> handleTransaction(PrintWriter out, Iterator<String> input) throws IOException, MessagingException {
 		// Initialize the state machine
 		SmtpState smtpState = SmtpState.CONNECT;
 		SmtpRequest smtpRequest = new SmtpRequest(SmtpActionType.CONNECT, "", smtpState);
@@ -200,12 +176,13 @@ public final class SimpleSmtpServer implements AutoCloseable {
 		sendResponse(out, smtpResponse);
 		smtpState = smtpResponse.getNextState();
 
-		List<SmtpMessage> msgList = new ArrayList<>();
-		SmtpMessage msg = new SmtpMessage();
-
+		List<MimeMessage> msgList = new ArrayList<>();
+		StringBuilder currentMessage = new StringBuilder();
 		while (smtpState != SmtpState.CONNECT) {
-			String line = input.next();
-
+			String line = null;
+			if (input.hasNext()) {
+				line = input.next();
+			}
 			if (line == null) {
 				break;
 			}
@@ -221,12 +198,19 @@ public final class SimpleSmtpServer implements AutoCloseable {
 
 			// Store input in message
 			String params = request.params;
-			msg.store(response, params);
+			if (params != null) {
+				if (SmtpState.DATA_HDR.equals(response.getNextState()) || SmtpState.DATA_BODY == response.getNextState()) {
+					currentMessage.append(line).append(CRLF.toString());
+				}
+			}
 
 			// If message reception is complete save it
 			if (smtpState == SmtpState.QUIT) {
-				msgList.add(msg);
-				msg = new SmtpMessage();
+				if (log.isTraceEnabled())
+					log.trace(currentMessage.toString());
+				MimeMessage mimeMessage = new MimeMessage(null, new ByteArrayInputStream(currentMessage.toString().getBytes()));
+				msgList.add(mimeMessage);
+				currentMessage = new StringBuilder();
 			}
 		}
 

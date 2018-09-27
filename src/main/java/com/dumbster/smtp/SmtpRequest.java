@@ -161,6 +161,7 @@ class SmtpRequest {
 				action = SmtpActionType.DATA_END;
 			} else if (s.length() < 1) {
 				action = SmtpActionType.BLANK_LINE;
+				params = "";
 			} else {
 				action = SmtpActionType.UNRECOG;
 				params = s;
