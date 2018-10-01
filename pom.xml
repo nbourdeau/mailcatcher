@@ -23,6 +23,7 @@
 	<groupId>com.github.nbourdeau</groupId>
 	<artifactId>mailcatcher</artifactId>
 	<version>1.0</version>
+	<packaging>jar</packaging>
 
 	<name>mailcatcher</name>
 	<description>a simple fake SMTP server for test environments</description>
