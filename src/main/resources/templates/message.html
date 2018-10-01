@@ -1,0 +1,31 @@
+<div class="tab-content" xmlns:th="http://www.thymeleaf.org">
+    <div class="tab-pane fade show active" id="plain" role="tabpanel" aria-labelledby="plain-tab">
+        <pre th:text="${message.bodyPlain}"></pre>
+    </div>
+    <div class="tab-pane fade" id="html" role="tabpanel" aria-labelledby="html-tab">
+        <iframe th:src="'/message/' + ${message.id} + '/html'" width="100%" height="300px" frameBorder="0"></iframe>
+    </div>
+    <div class="tab-pane fade" id="html-source" role="tabpanel" aria-labelledby="html-source-tab">
+        <code th:text="${message.bodyHtml}"></code>
+    </div>
+    <div class="tab-pane fade" id="headers" role="tabpanel" aria-labelledby="headers-tab">
+        <table class="table">
+            <tr th:each="header : ${message.headers}">
+                <td th:text="${header.key}"></td>
+                <td th:text="${header.value}"></td>
+            </tr>
+        </table>
+    </div>
+    <div class="tab-pane fade" id="attachments" role="tabpanel" aria-labelledby="attachments-tab">
+        <table class="table">
+            <tr th:each="attachment : ${attachments}">
+                <td>
+                    <a th:href="@{/message/attachment/{attchId}(attchId=${attachment.id})}">
+                        <span th:text="${attachment.name ?: 'noname'}" />
+                    </a>
+                </td>
+                <td th:text="${attachment.contentType}"></td>
+            </tr>
+        </table>
+    </div>
+</div>

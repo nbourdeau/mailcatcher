@@ -1,5 +1,7 @@
 package com.github.nbourdeau.mailcatcher.model;
 
+import org.hibernate.annotations.Formula;
+
 import javax.persistence.*;
 import java.util.Date;
 import java.util.Map;
@@ -22,6 +24,9 @@ public class Message {
     private String bodyHtml;
     @ElementCollection
     private Map<String, String> headers;
+    @Formula("(SELECT COUNT(id) FROM attachment a WHERE a.message_id = id)")
+    @Column(insertable = false, updatable = false)
+    private boolean hasAttachments;
 
     public Long getId() {
         return id;
@@ -93,5 +98,13 @@ public class Message {
 
     public void setHeaders(Map<String, String> headers) {
         this.headers = headers;
+    }
+
+    public boolean isHasAttachments() {
+        return hasAttachments;
+    }
+
+    public void setHasAttachments(boolean hasAttachments) {
+        this.hasAttachments = hasAttachments;
     }
 }

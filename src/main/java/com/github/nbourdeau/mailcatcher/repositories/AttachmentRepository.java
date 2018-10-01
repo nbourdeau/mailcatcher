@@ -9,4 +9,6 @@ public interface AttachmentRepository extends CrudRepository<Attachment, Long> {
 
     List<Attachment> findByMessageId(Long messageId);
 
+    void removeByMessageId(Long messageId);
+
 }

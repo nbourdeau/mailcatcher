@@ -11,6 +11,7 @@ public class Attachment {
     private Long id;
     private String contentType;
     private String name;
+    private String cid;
     @Lob
     private Blob content;
     @ManyToOne
@@ -46,6 +47,14 @@ public class Attachment {
 
     public void setContent(Blob content) {
         this.content = content;
+    }
+
+    public String getCid() {
+        return cid;
+    }
+
+    public void setCid(String cid) {
+        this.cid = cid;
     }
 
     public Message getMessage() {

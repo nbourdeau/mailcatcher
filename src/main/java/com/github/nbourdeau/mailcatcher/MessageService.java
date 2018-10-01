@@ -12,12 +12,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.mail.Address;
-import javax.mail.Header;
-import javax.mail.Multipart;
-import javax.mail.Part;
+import javax.mail.*;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimePart;
 import javax.persistence.EntityManager;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -57,44 +56,7 @@ public class MessageService {
                     message.getHeaders().put(header.getName(), header.getValue());
                 }
                 // Parse body
-                if (mimeMessage.isMimeType("text/html")) {
-                    message.setBodyHtml(mimeMessage.getContent().toString());
-                } else if (mimeMessage.isMimeType("multipart/*")) {
-                    Multipart mp = (Multipart) mimeMessage.getContent();
-                    int count = mp.getCount();
-                    for (int i = 0; i < count; i++) {
-                        Part part = mp.getBodyPart(i);
-                        if (part.isMimeType("multipart/alternative")) {
-                            Multipart alts = (Multipart) part.getContent();
-                            int altsCount = alts.getCount();
-                            for (int j = 0; j < altsCount; j++) {
-                                Part altPart = alts.getBodyPart(j);
-                                if (altPart.isMimeType("text/html")) {
-                                    message.setBodyHtml(altPart.getContent().toString());
-                                } else {
-                                    message.setBodyPlain(altPart.getContent().toString());
-                                }
-                            }
-                        } else if (part.isMimeType("text/html")) {
-                            message.setBodyHtml(part.getContent().toString());
-                        } else if (part.isMimeType("text/plain")) {
-                            message.setBodyPlain(part.getContent().toString());
-                        } else {
-                            // We consider this is an attached file here (inline or not)
-                            Attachment attachment = new Attachment();
-                            String ct = part.getContentType();
-                            if (ct.indexOf(";") > 0)
-                                ct = ct.substring(0, ct.indexOf(";"));
-                            attachment.setContentType(ct);
-                            attachment.setName(part.getFileName());
-                            byte[] data = IOUtils.toByteArray(part.getInputStream());
-                            attachment.setContent(((Session) entityManager.getDelegate()).getLobHelper().createBlob(data));
-                            attachments.add(attachment);
-                        }
-                    }
-                } else {
-                    message.setBodyPlain(mimeMessage.getContent().toString());
-                }
+                parsePart(mimeMessage, message, attachments);
             } catch (Exception e) {
                 log.warn("Unable to store received message", e);
             }
@@ -113,6 +75,32 @@ public class MessageService {
                     attachmentRepository.save(attachment);
                 }
             }
+        }
+    }
+
+    private void parsePart(MimePart part, Message message, List<Attachment> attachments) throws MessagingException, IOException {
+        if (part.isMimeType("text/html")) {
+            message.setBodyHtml(part.getContent().toString());
+        } else if (part.isMimeType("text/plain")) {
+            message.setBodyPlain(part.getContent().toString());
+        } else if (part.isMimeType("multipart/*")) {
+            Multipart mp = (Multipart) part.getContent();
+            int count = mp.getCount();
+            for (int i = 0; i < count; i++) {
+                parsePart((MimePart) mp.getBodyPart(i), message, attachments);
+            }
+        } else {
+            // We consider this is an attached file here (inline or not)
+            Attachment attachment = new Attachment();
+            String ct = part.getContentType();
+            if (ct.indexOf(";") > 0)
+                ct = ct.substring(0, ct.indexOf(";"));
+            attachment.setContentType(ct);
+            attachment.setName(part.getFileName());
+            attachment.setCid(part.getHeader("Content-ID", null));
+            byte[] data = IOUtils.toByteArray(part.getInputStream());
+            attachment.setContent(((Session) entityManager.getDelegate()).getLobHelper().createBlob(data));
+            attachments.add(attachment);
         }
     }
 
